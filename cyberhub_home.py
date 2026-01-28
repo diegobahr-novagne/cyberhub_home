@@ -3,6 +3,12 @@ import requests
 import json
 import os
 from urllib.parse import urlparse
+# Importação da biblioteca de ordenação
+try:
+    from streamlit_sortables import sort_items
+except ImportError:
+    st.error("Erro: Biblioteca 'streamlit-sortables' não instalada. Pare o app e rode: pip install streamlit-sortables")
+    st.stop()
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -60,7 +66,7 @@ if 'data_loaded' not in st.session_state:
     st.session_state['links'] = saved_data['links']
     st.session_state['data_loaded'] = True
 
-# --- 3. CSS OTIMIZADO (5 Colunas + Topo Colado) ---
+# --- 3. CSS OTIMIZADO ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -74,14 +80,13 @@ st.markdown("""
         background-color: #000000;
     }
 
-    /* --- PUXAR CONTEÚDO PARA O TOPO --- */
-    /* Reduz o espaçamento padrão gigante do Streamlit */
+    /* Topo Colado */
     .block-container {
-        padding-top: 1rem !important; /* Originalmente é ~6rem */
+        padding-top: 1rem !important;
         padding-bottom: 2rem !important;
     }
 
-    /* Widget de Tempo (Ajustado para o novo topo) */
+    /* Widget de Tempo */
     .weather-widget {
         position: fixed;
         top: 15px;
@@ -96,16 +101,16 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* --- CARDS MENORES PARA 5 COLUNAS --- */
+    /* Cards */
     .cyber-link { text-decoration: none !important; }
     
     .cyber-card {
         background: rgba(20, 20, 30, 0.7);
         border: 1px solid #444;
         border-radius: 10px;
-        padding: 10px; /* Padding reduzido */
+        padding: 10px;
         text-align: center;
-        height: 120px; /* Altura reduzida (era 160px) */
+        height: 120px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -119,7 +124,7 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
     }
     .cyber-card img {
-        width: 40px; /* Ícone menor (era 56px) */
+        width: 40px; 
         height: 40px; 
         margin-bottom: 8px;
         filter: drop-shadow(0 0 5px #0ff);
@@ -127,7 +132,7 @@ st.markdown("""
     }
     .cyber-card span {
         color: #fff;
-        font-size: 0.9rem; /* Fonte menor */
+        font-size: 0.9rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -155,6 +160,31 @@ st.markdown("""
 with st.sidebar:
     st.header("⚙️ SETTINGS")
     
+    # --- ÁREA DE REORDENAÇÃO (NOVA) ---
+    with st.expander("🔄 REORDER LINKS", expanded=True):
+        st.write("Drag items to reorder:")
+        
+        # Pega apenas os nomes para exibir na lista ordenável
+        original_items = [item['name'] for item in st.session_state['links']]
+        
+        # Cria o componente de ordenação
+        sorted_names = sort_items(original_items)
+        
+        # Se a ordem mudou, atualiza o estado
+        if sorted_names != original_items:
+            new_order_links = []
+            # Reconstrói a lista de dicionários baseada na nova ordem dos nomes
+            for name in sorted_names:
+                # Encontra o dicionário original correspondente ao nome
+                match = next((item for item in st.session_state['links'] if item['name'] == name), None)
+                if match:
+                    new_order_links.append(match)
+            
+            st.session_state['links'] = new_order_links
+            save_data()
+            st.rerun()
+
+    # Adicionar Link
     st.subheader("Add Link")
     with st.form("add_form", clear_on_submit=True):
         new_name = st.text_input("Name")
@@ -170,6 +200,7 @@ with st.sidebar:
                 st.rerun()
 
     st.write("---")
+    # Remover Link
     st.subheader("Remove Link")
     if st.session_state['links']:
         current_names = [l['name'] for l in st.session_state['links']]
@@ -185,12 +216,12 @@ with st.sidebar:
 # Widget de Tempo
 st.markdown(f'<div class="weather-widget">{get_weather()}</div>', unsafe_allow_html=True)
 
-# Título (Margem reduzida para ficar colado no topo)
+# Título
 st.markdown("<h1 style='text-align: center; margin-top: 0px; margin-bottom: 20px; color: #fff; text-shadow: 0 0 10px #f0f; font-size: 2.5rem;'>CYBERHUB</h1>", unsafe_allow_html=True)
 
 # Grid de Links (5 COLUNAS)
 links = st.session_state['links']
-cols_per_row = 5 # <--- ALTERADO PARA 5
+cols_per_row = 5
 
 for i in range(0, len(links), cols_per_row):
     cols = st.columns(cols_per_row)
